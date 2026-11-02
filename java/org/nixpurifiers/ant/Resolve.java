@@ -57,6 +57,7 @@ public final class Resolve {
     }
     static DefaultModuleDescriptor pinned(IvySettings settings, File input, File previousFile,
                                            boolean updateAll, Set<String> updated, Set<String> previousSelected) throws Exception {
+        ProjectInputs.configure(settings);
         DefaultModuleDescriptor descriptor = (DefaultModuleDescriptor)XmlModuleDescriptorParser.getInstance()
             .parseDescriptor(settings, input.toURI().toURL(), true);
         if (descriptor.getInheritedDescriptors().length != 0)
@@ -76,6 +77,7 @@ public final class Resolve {
                 descriptor.addDependencyDescriptorMediator(ModuleId.newInstance(org, module), ExactPatternMatcher.INSTANCE, mediator);
             }
         }
+        ProjectInputs.select(descriptor);
         return descriptor;
     }
     static void writePinned(DefaultModuleDescriptor descriptor, File destination) throws Exception {

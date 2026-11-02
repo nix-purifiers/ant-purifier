@@ -59,6 +59,7 @@ stdenvNoCC.mkDerivation {
       --set ANT_PURIFIER_PLUGIN ${plugin}/share/java/ant-purifier.jar \
       --set ANT_PURIFIER_JDTLS ${jdt-language-server}/bin/jdtls \
       --set ANT_PURIFIER_IVY_JAR ${apacheIvy} \
+      --set ANT_PURIFIER_INPUT_TOOLS '${purifierSrc}/tools' \
       --set ANT_PURIFIER_LOCK_CLASSPATH '${plugin}/share/java/ant-purifier.jar:${apacheIvy}:${ant}/share/ant/lib/*' \
       --set ANT_PURIFIER_REALIZE "$out/lib/ant-purifier/nix/realize.nix" \
       --set-default SSL_CERT_FILE ${cacert}/etc/ssl/certs/ca-bundle.crt

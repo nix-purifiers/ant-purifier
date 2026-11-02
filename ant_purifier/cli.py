@@ -23,7 +23,7 @@ def property_hashes(properties):
   if not separator or not name:raise ValueError('expected Ant property NAME=VALUE')
   result.append({'name':name,'hash':hashlib.sha256(content.encode()).hexdigest()})
  return result
-def do_lock(root,ivy,build,native,sidecar,target,update=False,names=(),properties=()):
+def do_lock(root,ivy,build,native,sidecar,target,update=False,names=(),properties=(),input_refs=None):
  properties=[v[2:] for v in shlex.split(os.environ.get('ANT_ARGS','')) if v.startswith('-D')]+list(properties)
  property_fingerprints=property_hashes(properties)
  previous=None
@@ -33,7 +33,7 @@ def do_lock(root,ivy,build,native,sidecar,target,update=False,names=(),propertie
    if not isinstance(candidate,dict):raise ValueError('invalid companion format')
    if candidate.get('contentHash')==lock.seal(candidate)['contentHash']:previous=candidate
    if not update and all(candidate.get(k)==v for k,v in toolchain().items()) and not lock.problems(root,native,candidate,ivy=ivy,build=build):
-    if candidate['resolveTarget']==target and candidate.get('properties',[])==property_fingerprints:print('Existing native resolution retained',file=sys.stderr);return
+    if candidate['resolveTarget']==target and candidate.get('properties',[])==property_fingerprints and (input_refs is None or input_refs==[v['reference'] for v in candidate.get('projectInputs',[])]):print('Existing native resolution retained',file=sys.stderr);return
   except (ValueError,OSError,TypeError):pass
  if names and not previous:raise ValueError('named updates require an existing valid companion'+lock.FIX)
  selected=set()
@@ -60,11 +60,29 @@ def do_lock(root,ivy,build,native,sidecar,target,update=False,names=(),propertie
    for m in previous['modules']:ET.SubElement(dependencies,'override',{'org':m['group'],'module':m['name'],'matcher':'exact','rev':m['version']})
    prior=staged_ivy.with_name('.ant-purifier-previous.xml');document.write(prior,encoding='unicode')
   output=temp/'resolution';output.mkdir()
+  inputs=[];provided={};views=[]
   env={**os.environ,'HOME':str(temp/'home'),'ANT_PURIFIER_LOCKING':'1'};Path(env['HOME']).mkdir()
+  references=input_refs if input_refs is not None else [v['reference'] for v in (previous or {}).get('projectInputs',[])]
+  if references:
+   sys.path.insert(0,os.environ['ANT_PURIFIER_INPUT_TOOLS'])
+   import project_inputs as shared_inputs
+   from . import project_inputs
+   inputs=shared_inputs.pin(references,(previous or {}).get('projectInputs',[]),refresh=update and not names)
+   views=shared_inputs.maven_views(inputs)
+   configuration=temp/'project-inputs.properties'
+   provided=project_inputs.properties(views,configuration)
+   env['ANT_PURIFIER_INPUT_PROPERTIES']=str(configuration)
   command=[JAVA,*shlex.split(os.environ.get('ANT_OPTS','')),'-Djava.io.tmpdir='+str(temp),'-Duser.home='+env['HOME'],'-Dant.home='+os.environ['ANT_PURIFIER_ANT_HOME'],'-cp',os.environ['ANT_PURIFIER_LOCK_CLASSPATH'],'org.nixpurifiers.ant.AntResolve',staged_ivy,output,prior,'all' if update and not names else 'selected' if update else 'none',','.join(sorted(selected)),','.join(lock.key(m) for m in previous['modules']) if previous else ','.join(lock.pins(prior)) if prior.exists() else '',staged_build,target,*properties]
   run(command,cwd=stage,env=env,stdout=sys.stderr)
   resolution=ET.parse(output/'resolution.xml').getroot();modules=[];artifacts=[];metadata=[]
+  supplied=set(provided)
+  if views:
+   for record in resolution.findall('./modules/module'):
+    origin=record.find('original')
+    if origin is not None and project_inputs.supplied_origin(origin.get('url'),views):supplied.add((record.get('group'),record.get('name')))
+
   for record in resolution.findall('./modules/module'):
+   if (record.get('group'),record.get('name')) in supplied:continue
    m={key:record.get(key) for key in ('group','name','version')};m['descriptor']=Path(record.get('file')).read_text()
    if (original:=record.find('original')) is not None:m['original']={'url':original.get('url'),'hash':sri(original.get('file'))}
    old=next((p for p in (previous or {}).get('modules',[]) if all(p[k]==m[k] for k in ('group','name','version'))),None)
@@ -73,6 +91,7 @@ def do_lock(root,ivy,build,native,sidecar,target,update=False,names=(),propertie
    if old and old.get('original',{}).get('hash')==m.get('original',{}).get('hash'):m['descriptor']=old['descriptor']
    modules.append(m)
   for record in resolution.findall('./artifacts/artifact'):
+   if (record.get('group'),record.get('module')) in supplied:continue
    a={k:v for k,v in record.attrib.items() if k!='file'};a['hash']=sri(record.get('file'))
    old=next((p for p in (previous or {}).get('artifacts',[]) if all(p[k]==a[k] for k in ('group','module','version','name','ext','classifier'))),None)
    if old and old['hash']!=a['hash'] and not (update and (not names or a['group']+':'+a['module'] in selected)):raise ValueError('a pinned native artifact changed bytes: '+a['path']+'; use an explicit update to accept the change')
@@ -84,9 +103,12 @@ def do_lock(root,ivy,build,native,sidecar,target,update=False,names=(),propertie
    if not prior_artifact or (artifact['type'],artifact['url'])<(prior_artifact['type'],prior_artifact['url']):unique[artifact['path']]=artifact
   artifacts=list(unique.values())
   for record in resolution.findall('./metadata/pom'):
+   if (record.get('group'),record.get('name')) in supplied or (views and project_inputs.supplied_origin(record.get('url'),views)):continue
    m={k:v for k,v in record.attrib.items() if k!='file'};m['hash']=sri(record.get('file'));metadata.append(m)
   staged_native=output/'ivy.lock.xml'
+  if supplied:project_inputs.unpin(staged_native,ivy,supplied)
   data=lock.seal({'version':1,**toolchain(),'nativeHash':lock.digest(staged_native),'ivyHash':lock.digest(ivy),'buildHash':lock.digest(build),'inputs':lock.inputs(root,native),'ivyFile':str(ivy.relative_to(root)) if ivy.is_relative_to(root) else ivy.name,'buildFile':str(build.relative_to(root)) if build.is_relative_to(root) else build.name,'resolveTarget':target,'properties':property_fingerprints,'modules':sorted(modules,key=lock.key),'artifacts':sorted(artifacts,key=lambda a:a['path']),'metadata':sorted(metadata,key=lambda m:(lock.key(m),m['version'])),'sourceRoots':sorted({s.get('path') for s in resolution.findall('./sourceRoots/source')})})
+  if inputs:data=lock.seal({**data,'projectInputs':inputs})
   if problems:=lock.problems(root,staged_native,data,input_native=native,ivy=ivy,build=build):raise ValueError('\n'.join(problems))
   write(native,staged_native.read_text());write(sidecar,json.dumps(data,sort_keys=True,indent=2)+'\n')
  print('Locked native Ivy graph',file=sys.stderr)
@@ -111,7 +133,7 @@ def project_from_args(arguments):
  return Path.cwd(),Path.cwd()/'build.xml'
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--project');parser.add_argument('--ivy-file',default=os.environ.get('ANT_PURIFIER_IVY_FILE'));parser.add_argument('--build-file');parser.add_argument('--native-lock',default=os.environ.get('ANT_PURIFIER_NATIVE_LOCKFILE'));parser.add_argument('--lockfile',default=os.environ.get('ANT_PURIFIER_LOCKFILE'));parser.add_argument('--resolve-target',default='resolve');parser.add_argument('-D','--property',action='append',default=[])
- sub=parser.add_subparsers(dest='command',required=True);sub.add_parser('lock');p=sub.add_parser('update');p.add_argument('names',nargs='*');p=sub.add_parser('prefetch');p.add_argument('--print-environment',action='store_true');p=sub.add_parser('native');p.add_argument('args',nargs=argparse.REMAINDER);p=sub.add_parser('editor');p.add_argument('args',nargs=argparse.REMAINDER)
+ sub=parser.add_subparsers(dest='command',required=True);p=sub.add_parser('lock');p.add_argument('--input',action='append');p=sub.add_parser('update');p.add_argument('--input',action='append');p.add_argument('names',nargs='*');p=sub.add_parser('prefetch');p.add_argument('--print-environment',action='store_true');p=sub.add_parser('native');p.add_argument('args',nargs=argparse.REMAINDER);p=sub.add_parser('editor');p.add_argument('args',nargs=argparse.REMAINDER)
  a=parser.parse_args();arguments=(a.args[1:] if a.args[:1]==['--'] else a.args) if a.command in ('native','editor') else []
  root,build=project_from_args(arguments)
  if a.project:root=Path(a.project).expanduser().resolve();build=root/'build.xml'
@@ -141,5 +163,5 @@ def main():
   environment=prefetch(root,ivy,build,native,sidecar)
   os.environ.update(ANT_PURIFIER_ENVIRONMENT=str(environment),ANT_PURIFIER_IVY_FILE=str(ivy),ANT_PURIFIER_NIX_DELIVERED='1',ANT_PURIFIER_PROJECT_ROOT=str(root))
   os.execv(ANT,[ANT,'-lib',os.environ['ANT_PURIFIER_PLUGIN'],'-lib',os.environ['ANT_PURIFIER_IVY_JAR'],'-listener','org.nixpurifiers.ant.LockedListener',*arguments])
- elif a.command in ('lock','update'):do_lock(root,ivy,build,native,sidecar,a.resolve_target,a.command=='update',getattr(a,'names',()),a.property)
+ elif a.command in ('lock','update'):do_lock(root,ivy,build,native,sidecar,a.resolve_target,a.command=='update',getattr(a,'names',()),a.property,getattr(a,'input',None))
  else:print(prefetch(root,ivy,build,native,sidecar))

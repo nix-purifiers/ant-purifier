@@ -12,6 +12,7 @@
   gnutar,
   gzip,
   purifier,
+  stdenv,
 }:
 {
   src,
@@ -24,7 +25,10 @@
   publishTarget ? null,
   antProperties ? { },
   nativeBuildInputs ? [ ],
-  projectDependencies ? [ ],
+  projectDependencies ? purifier.lockedProjectInputs {
+    inputs = (builtins.fromJSON (builtins.readFile lockFile)).projectInputs or [ ];
+    system = stdenv.hostPlatform.system;
+  },
   srcFilter ?
     path: type:
     !(builtins.elem (baseNameOf path) [
@@ -59,9 +63,11 @@ let
         fetchurl
         writeText
         purifier
+        python3
+        stdenv
         ;
     })
-      { inherit lock fetchers; };
+      { inherit lock fetchers projectDependencies; };
   build =
     runCommand "purified-ant-project"
       {
@@ -136,9 +142,6 @@ let
           -C ${project} -cf - project repository | gzip -n > "$out/project.tar.gz"
       '';
 in
-assert
-  projectDependencies == [ ]
-  || throw "ant-purifier: consuming Nix-built JVM project inputs is not wired yet; native publication projections are available for other tools";
 assert
   lock.antVersion == ant.version
   || throw "ant-purifier: Ant differs from the lock; override the scope's ant or update the lock";

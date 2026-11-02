@@ -15,6 +15,7 @@ let
         "LockedListener.java"
         "Resolve.java"
         "AntResolve.java"
+        "ProjectInputs.java"
         "antlib.xml"
       ];
       toolchain = map toString [

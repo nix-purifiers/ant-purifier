@@ -8,6 +8,10 @@ let
   };
 in
 {
+  composition-provider = import ./composition-provider.nix {
+    inherit pkgs;
+    purifier = import (self.inputs.purifier + "/nix/lib") { inherit (pkgs) lib; };
+  };
   cli = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
   plugin = self.packages.${pkgs.stdenv.hostPlatform.system}.plugin;
   environment = project.packages.environment;

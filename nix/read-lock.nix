@@ -208,6 +208,7 @@ in
   resolveTarget = data.resolveTarget or "";
   ivyFile = data.ivyFile or "";
   buildFile = data.buildFile or "";
+  projectInputs = data.projectInputs or [ ];
   modules = if usable then modules else [ ];
   artifacts = if usable then artifacts else [ ];
   sourceRoots = data.sourceRoots or [ ];

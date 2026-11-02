@@ -4,10 +4,16 @@
   fetchurl,
   writeText,
   purifier,
+  python3,
+  stdenv,
 }:
 {
   lock,
   fetchers ? { },
+  projectDependencies ? purifier.lockedProjectInputs {
+    inputs = lock.projectInputs or [ ];
+    system = stdenv.hostPlatform.system;
+  },
 }:
 let
   checked = purifier.checkLock lock;
@@ -19,6 +25,11 @@ let
     }
     // fetchers
   );
+  provided = purifier.jvmProjections {
+    repository = null;
+    dependencies = projectDependencies;
+    inherit runCommand python3;
+  };
   settings = writeText "purified-ivysettings.xml" ''
     <ivysettings>
       <settings defaultResolver="purified"/>
@@ -111,7 +122,21 @@ runCommand "purified-ant-environment" { } ''
   mkdir -p "$out"
   ln -s ${sources}/repository "$out/repository"
   ln -s ${sources}/runtime-repository "$out/runtime-repository"
-  ln -s ${sources}/ivy.lock.xml "$out/ivy.lock.xml"
-  ln -s ${settings} "$out/settings.xml"
-  ln -s ${metadata} "$out/metadata.json"
+  ${
+    if projectDependencies == [ ] then
+      ''
+        ln -s ${sources}/ivy.lock.xml "$out/ivy.lock.xml"
+        ln -s ${settings} "$out/settings.xml"
+        ln -s ${metadata} "$out/metadata.json"
+      ''
+    else
+      ''
+        cp ${sources}/ivy.lock.xml "$out/ivy.lock.xml"
+        cp ${settings} "$out/settings.xml"
+        cp ${metadata} "$out/metadata.json"
+        chmod u+w "$out/ivy.lock.xml" "$out/settings.xml" "$out/metadata.json"
+        ${python3}/bin/python ${../ant_purifier/project_inputs.py} \
+          "$out" ${provided.maven} ${provided.maven.catalog}
+      ''
+  }
 ''

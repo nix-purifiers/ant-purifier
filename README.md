@@ -71,6 +71,29 @@ is removed. JDT's workspace is kept outside the source tree.
 toolchain beside the selected lockfile so subsequent builds and editor sessions
 can run offline.
 
+## Dependencies from another purified project
+
+Use a producer package that exports `projections.maven`:
+
+```sh
+ant-purifier lock \
+  --input 'github:owner/library/<rev>#library'
+ant-purifier prefetch
+ant test
+```
+
+The catalog selects supplied modules automatically, including their immutable
+Nix-derived versions. Keep the dependency declarations in `ivy.xml`; no version
+rewrite table is needed. Repeat `--input` for additional producers.
+
+The companion lock records pinned Nix sources. Their artifacts and native version
+pins stay out of the download locks. Relocking retains the source pins; `update`
+refreshes them. Native resolution and editor metadata use the same selected files.
+
+Nix builds read the recorded inputs by default. They can also take
+`projectDependencies = [ producer.packages.${system}.library ];`. Publication
+views include the supplied closure and rewrite descriptors for downstream tools.
+
 ## Nix builds
 
 Apply `overlays.default`, then call the scoped builder:
@@ -104,8 +127,7 @@ private mirrors can be supplied through builder fetchers.
 
 Inline Ivy resolution, inherited descriptors, branches, multiple project base
 directories, custom cache managers, and explicit artifact URLs are rejected.
-Native Nix project dependency inputs are not yet supported. Arbitrary downloads
-performed by other Ant tasks need their own locked inputs.
+Arbitrary downloads performed by other Ant tasks need their own locked inputs.
 
 ## Credits
 
