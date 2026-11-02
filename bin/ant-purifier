@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+import subprocess,sys
+from ant_purifier.cli import main
+try:raise SystemExit(main())
+except (ValueError,OSError,subprocess.CalledProcessError) as error:
+ print('ant-purifier: '+str(error),file=sys.stderr);raise SystemExit(1)

@@ -1,0 +1,32 @@
+<project name="locked-ant" default="test" xmlns:ivy="antlib:org.apache.ivy.ant">
+  <target name="init">
+    <property file="build.properties"/>
+  </target>
+  <target name="resolve" depends="init">
+    <ivy:settings file="ivysettings.xml"/>
+    <ivy:resolve/>
+    <ivy:cachepath pathid="dependencies"/>
+  </target>
+  <target name="compile" depends="resolve">
+    <mkdir dir="build/classes"/>
+    <javac srcdir="src" destdir="build/classes" includeantruntime="false">
+      <classpath refid="dependencies"/>
+    </javac>
+  </target>
+  <target name="test" depends="compile">
+    <java classname="Main" failonerror="true">
+      <classpath>
+        <pathelement location="build/classes"/>
+        <path refid="dependencies"/>
+      </classpath>
+    </java>
+  </target>
+  <target name="jar" depends="compile">
+    <jar destfile="build/locked-ant-1.0.jar" basedir="build/classes"/>
+  </target>
+  <target name="publish" depends="jar">
+    <ivy:publish resolver="central" pubrevision="1.0"
+                 artifactspattern="build/[artifact]-[revision].[ext]"
+                 overwrite="true"/>
+  </target>
+</project>

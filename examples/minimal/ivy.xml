@@ -1,0 +1,9 @@
+<ivy-module version="2.0">
+  <info organisation="example" module="locked-ant" revision="1.0"/>
+  <configurations><conf name="default"/></configurations>
+  <publications><artifact name="locked-ant" type="jar" ext="jar"/></publications>
+  <dependencies>
+    <dependency org="org.apache.commons" name="commons-lang3"
+                rev="${commons.version}" conf="default->default"/>
+  </dependencies>
+</ivy-module>

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.log
+cli-native
+result
+.ant-purifier/
+examples/minimal/build/
+plugin-native
+native-release-test/
+environment-native

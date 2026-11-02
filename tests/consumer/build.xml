@@ -1,0 +1,14 @@
+<project default="test" xmlns:ivy="antlib:org.apache.ivy.ant">
+  <target name="test">
+    <ivy:settings file="ivysettings.xml"/>
+    <ivy:resolve/>
+    <ivy:cachepath pathid="dependencies"/>
+    <mkdir dir="classes"/>
+    <javac srcdir="src" destdir="classes" includeantruntime="false">
+      <classpath refid="dependencies"/>
+    </javac>
+    <java classname="Consumer" failonerror="true">
+      <classpath><pathelement location="classes"/><path refid="dependencies"/></classpath>
+    </java>
+  </target>
+</project>
