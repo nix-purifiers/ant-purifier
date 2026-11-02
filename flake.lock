@@ -19,11 +19,11 @@
     "purifier": {
       "flake": false,
       "locked": {
-        "lastModified": 1793625087,
-        "narHash": "sha256-mOKWRfGL+pmLHoxtFUrFwbcFT+biUVifdMmNnvFHJ3Y=",
+        "lastModified": 1793627085,
+        "narHash": "sha256-wNPqW0/YYIaiPGaV+ZiKfh1WfZ/hqTnFfnoagslsWQ4=",
         "owner": "nix-purifiers",
         "repo": "purifier",
-        "rev": "c172c0da181a0872f577a083b541f71c317cf87c",
+        "rev": "3db3ec633ccf0f8d6f3bca202b11bbb97d12c341",
         "type": "github"
       },
       "original": {
