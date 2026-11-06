@@ -6,11 +6,16 @@
     url = "github:nix-purifiers/purifier";
     flake = false;
   };
+  inputs.jvmSdkContract = {
+    url = "github:nix-purifiers/purifier/f444063c705056a605583bd273cc8147f57808ee";
+    flake = false;
+  };
   outputs =
     {
       self,
       nixpkgs,
       purifier,
+      jvmSdkContract,
     }:
     let
       systems = [
@@ -21,13 +26,46 @@
       shared = lib: import (purifier + "/nix/lib") { inherit lib; };
       overlay = final: prev: {
         ant-purifier = final.lib.makeScope final.newScope (scope: {
+          nativeProfile = "modern-v1";
+          legacyJvmAdapter = null;
+          legacySdk =
+            if scope.nativeProfile == "legacy-basic-v1" then
+              scope.callPackage ./nix/legacy-basic/sdk.nix { sdkContract = jvmSdkContract; }
+            else
+              null;
           apacheIvy = scope.callPackage ./nix/ivy.nix { };
-          plugin = scope.callPackage ./nix/plugin.nix { };
-          cli = scope.callPackage ./nix/cli.nix {
-            nixpkgsSrc = nixpkgs;
-            purifierSrc = purifier;
-          };
-          buildAntProject = scope.callPackage ./nix/build-project.nix { purifier = shared final.lib; };
+          plugin =
+            if scope.nativeProfile == "modern-v1" then
+              scope.callPackage ./nix/plugin.nix { }
+            else if scope.nativeProfile == "legacy-basic-v1" then
+              scope.callPackage ./nix/legacy-basic/plugin.nix { }
+            else
+              throw "ant-purifier: unknown native profile";
+          legacyRuntime =
+            if scope.nativeProfile == "legacy-basic-v1" then
+              scope.callPackage ./nix/legacy-basic/runtime.nix { }
+            else
+              null;
+          cli =
+            if scope.nativeProfile == "modern-v1" then
+              scope.callPackage ./nix/cli.nix {
+                nixpkgsSrc = nixpkgs;
+                purifierSrc = purifier;
+              }
+            else if scope.nativeProfile == "legacy-basic-v1" then
+              scope.callPackage ./nix/legacy-basic/cli.nix {
+                nixpkgsSrc = nixpkgs;
+                purifierSrc = purifier;
+              }
+            else
+              throw "ant-purifier: unknown native profile";
+          buildAntProject =
+            if scope.nativeProfile == "modern-v1" then
+              scope.callPackage ./nix/build-project.nix { purifier = shared final.lib; }
+            else if scope.nativeProfile == "legacy-basic-v1" then
+              scope.callPackage ./nix/legacy-basic/build-project.nix { purifier = shared final.lib; }
+            else
+              throw "ant-purifier: unknown native profile";
         });
       };
       pkgsFor =
@@ -39,7 +77,7 @@
     in
     {
       overlays.default = overlay;
-      lib.ant-purifier.readLock = import ./nix/read-lock.nix { lib = nixpkgs.lib; };
+      lib.ant-purifier.readLock = import ./nix/read-profile-lock.nix { lib = nixpkgs.lib; };
       packages = forAll (system: {
         default = (pkgsFor system).ant-purifier.cli;
         cli = self.packages.${system}.default;
