@@ -129,6 +129,62 @@ Inline Ivy resolution, inherited descriptors, branches, multiple project base
 directories, custom cache managers, and explicit artifact URLs are rejected.
 Arbitrary downloads performed by other Ant tasks need their own locked inputs.
 
+### Explicit legacy basic profile
+
+Projects using older native tools can select `legacy-basic-v1` in their Nix
+scope. It has a separate Java 6 collector and a closed version 2 companion lock;
+the normal profile and its version 1 locks remain separate. The executed tuple
+is **Ant 1.5.4, Ivy 2.4.0, Azul Zulu JDK 6.0.119, x86-64 Linux**. This establishes
+no version range, ARM support, or Ant 1.2/Ivy 2.4 compatibility.
+
+Supply actual Nix packages and the published JVM SDK adapter contract (from
+`nix-purifiers/purifier` v0.1.52). For example, a caller receiving those
+inputs can construct its scope as follows:
+
+```nix
+{ pkgs, sdkContract, projectSdk, projectAnt, projectIvy }:
+let
+  adapter = (import (sdkContract + "/nix/lib/jvm-sdk-adapter.nix") {
+    inherit (pkgs) lib;
+  }) {
+    sdk = projectSdk;
+    system = pkgs.stdenv.hostPlatform.system;
+    home = "${projectSdk}";
+    executable = "${projectSdk}/bin/java";
+    runtimeHome = "${projectSdk}/jre";
+  };
+in pkgs.ant-purifier.overrideScope (_: _: {
+  nativeProfile = "legacy-basic-v1";
+  legacyJvmAdapter = adapter;
+  ant = projectAnt;
+  apacheIvy = projectIvy;
+})
+```
+
+SDK home and manager runtime home must describe the actual package layout.
+The adapter retains output, home, executable and runtime-home Nix contexts;
+serialized lock paths never reconstruct or select an SDK. The selected SDK
+compiles and runs the legacy collector. A modern build-host JDK only assembles
+its reproducible JAR. `tests/legacy-basic/toolchains.nix` supplies the exact
+immutable inputs used for the bounded tuple above.
+
+Use the resulting scope's `cli` for the existing `lock`, `update`, `prefetch`
+and `native -- TARGET` commands, or its `buildAntProject` for Nix builds. No
+project declaration or additional CLI switch selects this profile. Capture
+executes the original native resolver target; relocking runs it again with
+retained native Ivy pins. Explicit updates release all or named pins. Changed
+pinned module or artifact bytes require an explicit update. Prefetch retains
+both the dependency environment and the source-owned CLI/runtime closure.
+
+The profile supports dependency resolution/retrieval, Java compilation,
+asserting Java execution, and a source/class tree. Its `release` is explicitly a
+deterministic **source/class-tree archive**, not native publication fidelity.
+Packaging/publication tasks, nested Ant projects, Javadoc, JUnit tasks,
+publication projections and project composition are rejected. Compiler and
+forked Java tasks must use the declared SDK; actual process, runtime home and
+Ant/Ivy/collector JAR origins are checked before the relevant actions. The
+ordinary profile remains available for its existing publication workflow.
+
 ## Credits
 
 The purifier idea was inspired by nixcloud's

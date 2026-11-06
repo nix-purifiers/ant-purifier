@@ -35,7 +35,25 @@
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
-        "purifier": "purifier"
+        "purifier": "purifier",
+        "jvmSdkContract": "jvmSdkContract"
+      }
+    },
+    "jvmSdkContract": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793987276,
+        "narHash": "sha256-NaeaVq9B520WgzmRSMLGdN2zqnFlvM/wfZ8hECHhYqY=",
+        "owner": "nix-purifiers",
+        "repo": "purifier",
+        "rev": "f444063c705056a605583bd273cc8147f57808ee",
+        "type": "github"
+      },
+      "original": {
+        "type": "github",
+        "owner": "nix-purifiers",
+        "repo": "purifier",
+        "rev": "f444063c705056a605583bd273cc8147f57808ee"
       }
     }
   },
