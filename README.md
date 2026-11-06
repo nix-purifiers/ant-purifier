@@ -175,15 +175,20 @@ executes the original native resolver target; relocking runs it again with
 retained native Ivy pins. Explicit updates release all or named pins. Changed
 pinned module or artifact bytes require an explicit update. Prefetch retains
 both the dependency environment and the source-owned CLI/runtime closure.
+The installed `ant` wrapper warns and runs the selected ordinary Ant unchanged
+when no lock files exist. Explicit prefetch and partial or malformed lock files
+remain errors; they do not silently enter the unlocked workflow.
 
 The profile supports dependency resolution/retrieval, Java compilation,
 asserting Java execution, and a source/class tree. Its `release` is explicitly a
 deterministic **source/class-tree archive**, not native publication fidelity.
-Packaging/publication tasks, nested Ant projects, Javadoc, JUnit tasks,
+Packaging/publication tasks, task containers (including sequential/parallel),
+nested Ant projects, Javadoc, JUnit tasks,
 publication projections and project composition are rejected. Compiler and
 forked Java tasks must use the declared SDK; actual process, runtime home and
 Ant/Ivy/collector JAR origins are checked before the relevant actions. The
 ordinary profile remains available for its existing publication workflow.
+These task checks do not establish introspection of arbitrary custom tasks.
 
 ## Credits
 
