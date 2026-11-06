@@ -45,11 +45,13 @@ cli = Path(run('cli-build', ['nix', 'build', '--no-link', '--print-out-paths', '
 foreign = a.foreign_sdk or Path(run('foreign-sdk-build', ['nix', 'build', '--no-link', '--print-out-paths', '--file', tools, 'foreignSdk']).strip().splitlines()[-1])
 python = [sys.executable, '-B']
 scripts = root/'tests/legacy-basic'
+run('unlocked', [*python, scripts/'unlocked.py', '--cli', cli, '--output', out/'unlocked'])
 run('lifecycle', [*python, scripts/'lifecycle.py', '--cli', cli, '--output', out/'lifecycle',
                   '--namespace-tools', a.namespace_tools, '--ip', a.ip])
 run('negative', [*python, scripts/'negative.py', '--cli', cli, '--project', out/'lifecycle/relocated',
                  '--output', out/'negative', '--foreign-sdk', foreign])
 run('roles', [*python, scripts/'roles.py', '--cli', cli, '--output', out/'roles', '--foreign-sdk', foreign])
+run('containers', [*python, scripts/'containers.py', '--cli', cli, '--output', out/'containers'])
 run('update', [*python, scripts/'update.py', '--cli', cli, '--output', out/'update'])
 project = subprocess.check_output(['nix', 'store', 'add-path', str(out/'lifecycle/relocated')], text=True).strip()
 builder = out/'builder.nix'

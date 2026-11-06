@@ -214,6 +214,12 @@ def main():
     ivy = Path(args.ivy_file).expanduser().resolve() if args.ivy_file else root/'ivy.xml'
     native = Path(args.native_lock).expanduser().resolve() if args.native_lock else root/'ivy.lock.xml'
     sidecar = Path(args.lockfile).expanduser().resolve() if args.lockfile else root/'ant-purifier.lock.json'
+    if (args.command == 'native' and not args.lockfile and not args.native_lock
+            and not any(path.exists() or path.is_symlink()
+                        for path in (native, sidecar, lock.payload_file(sidecar)))):
+        print('ant-purifier: no lockfile; using ordinary impure Ant/Ivy', file=sys.stderr)
+        ant = os.environ['ANT_PURIFIER_ANT']
+        os.execv(ant, [ant, *arguments])
     if not ivy.is_relative_to(root) or not build.is_relative_to(root):
         raise ValueError('legacy-basic-v1 requires build and Ivy files in one native project')
     if args.command in ('lock', 'update'):

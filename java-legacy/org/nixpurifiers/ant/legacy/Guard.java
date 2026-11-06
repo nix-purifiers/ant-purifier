@@ -74,6 +74,8 @@ final class Guard {
         return false;
     }
     static void supported(Class<?> type) {
+        if (TaskContainer.class.isAssignableFrom(type))
+            throw new BuildException("ant-purifier: legacy-basic-v1 does not support task containers");
         for (String name : PACKAGING) if (isA(type, name))
             throw new BuildException("ant-purifier: legacy-basic-v1 does not support packaging or publication tasks");
         if (isA(type, "org.apache.tools.ant.taskdefs.Ant") || isA(type, "org.apache.tools.ant.taskdefs.CallTarget"))
