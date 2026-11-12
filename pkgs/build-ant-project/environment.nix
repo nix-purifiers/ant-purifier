@@ -135,7 +135,7 @@ runCommand "purified-ant-environment" { } ''
         cp ${settings} "$out/settings.xml"
         cp ${metadata} "$out/metadata.json"
         chmod u+w "$out/ivy.lock.xml" "$out/settings.xml" "$out/metadata.json"
-        ${python3}/bin/python ${../ant_purifier/project_inputs.py} \
+        ${python3}/bin/python ${../../ant_purifier/project_inputs.py} \
           "$out" ${provided.maven} ${provided.maven.catalog}
       ''
   }

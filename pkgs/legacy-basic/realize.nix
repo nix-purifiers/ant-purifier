@@ -10,7 +10,7 @@
 let
   pkgs = import (builtins.toPath "@nixpkgs@") { system = "@system@"; };
   purifier = import (builtins.toPath "@purifier@/nix/lib") { inherit (pkgs) lib; };
-  lock = (import ./read-lock.nix { inherit (pkgs) lib; }) {
+  lock = (import ../../lib-overlays/default/legacy-basic/read-lock.nix { inherit (pkgs) lib; }) {
     src = /. + project;
     lockFile = /. + lockFile;
     ivyLock = /. + ivyLock;
@@ -18,7 +18,7 @@ let
     buildFile = /. + buildFile;
   };
 in
-(pkgs.callPackage ../environment.nix { inherit purifier; }) {
+(pkgs.callPackage ../build-ant-project/environment.nix { inherit purifier; }) {
   inherit lock;
   projectDependencies = [ ];
 }

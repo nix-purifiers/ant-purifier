@@ -31,8 +31,8 @@ stdenvNoCC.mkDerivation {
   };
   installPhase = ''
     mkdir -p "$out/bin" "$out/lib"
-    cp -r ant_purifier ant_purifier_legacy nix "$out/lib/"
-    substituteInPlace "$out/lib/nix/legacy-basic/realize.nix" \
+    cp -r ant_purifier ant_purifier_legacy lib-overlays pkgs "$out/lib/"
+    substituteInPlace "$out/lib/pkgs/legacy-basic/realize.nix" \
       --replace-fail '@nixpkgs@' '${nixpkgsSrc}' \
       --replace-fail '@purifier@' '${purifierSrc}' \
       --replace-fail '@system@' '${stdenvNoCC.hostPlatform.system}'
@@ -58,7 +58,7 @@ stdenvNoCC.mkDerivation {
       --set ANT_PURIFIER_LEGACY_CONTEXT ${lib.escapeShellArg "${legacyRuntime.contextFile}"} \
       --set ANT_PURIFIER_LEGACY_PROPERTIES ${lib.escapeShellArg "${legacyRuntime.propertiesFile}"} \
       --set ANT_PURIFIER_LOCK_CLASSPATH ${lib.escapeShellArg classpath} \
-      --set ANT_PURIFIER_REALIZE "$out/lib/nix/legacy-basic/realize.nix" \
+      --set ANT_PURIFIER_REALIZE "$out/lib/pkgs/legacy-basic/realize.nix" \
       --set ANT_PURIFIER_LEGACY_RUNTIME "$out"
     makeWrapper "$out/bin/ant-purifier" "$out/bin/ant" --add-flags 'native --'
   '';
