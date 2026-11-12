@@ -10,7 +10,7 @@
 let
   sourceHash = builtins.hashString "sha256" (
     builtins.toJSON {
-      sources = map (name: builtins.readFile (../java/org/nixpurifiers/ant + "/${name}")) [
+      sources = map (name: builtins.readFile (../../java/org/nixpurifiers/ant + "/${name}")) [
         "Activate.java"
         "LockedListener.java"
         "Resolve.java"
@@ -31,7 +31,7 @@ in
 stdenvNoCC.mkDerivation {
   pname = "ant-purifier-plugin";
   version = pluginVersion;
-  src = ../java;
+  src = ../../java;
   nativeBuildInputs = [ jdk ];
   buildPhase = ''
     mkdir -p classes

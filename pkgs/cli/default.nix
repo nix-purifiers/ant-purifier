@@ -18,7 +18,7 @@
 stdenvNoCC.mkDerivation {
   pname = "ant-purifier";
   version = "0.1.0";
-  src = ../.;
+  src = ../..;
   nativeBuildInputs = [ makeWrapper ];
   dontBuild = true;
   passthru.purifierRuntime = {
@@ -29,9 +29,9 @@ stdenvNoCC.mkDerivation {
   };
   installPhase = ''
     mkdir -p "$out/bin" "$out/lib/ant-purifier"
-    cp -r ant_purifier nix "$out/lib/ant-purifier/"
+    cp -r ant_purifier lib-overlays pkgs "$out/lib/ant-purifier/"
     install -m755 bin/ant-purifier "$out/bin/ant-purifier"
-    substituteInPlace "$out/lib/ant-purifier/nix/realize.nix" \
+    substituteInPlace "$out/lib/ant-purifier/pkgs/cli/realize.nix" \
       --replace-fail '@nixpkgs@' '${nixpkgsSrc}' \
       --replace-fail '@purifier@' '${purifierSrc}' \
       --replace-fail '@plugin@' '${plugin}' \
@@ -61,7 +61,7 @@ stdenvNoCC.mkDerivation {
       --set ANT_PURIFIER_IVY_JAR ${apacheIvy} \
       --set ANT_PURIFIER_INPUT_TOOLS '${purifierSrc}/tools' \
       --set ANT_PURIFIER_LOCK_CLASSPATH '${plugin}/share/java/ant-purifier.jar:${apacheIvy}:${ant}/share/ant/lib/*' \
-      --set ANT_PURIFIER_REALIZE "$out/lib/ant-purifier/nix/realize.nix" \
+      --set ANT_PURIFIER_REALIZE "$out/lib/ant-purifier/pkgs/cli/realize.nix" \
       --set-default SSL_CERT_FILE ${cacert}/etc/ssl/certs/ca-bundle.crt
     makeWrapper "$out/bin/ant-purifier" "$out/bin/ant" --add-flags 'native --'
     makeWrapper "$out/bin/ant-purifier" "$out/bin/jdtls" --add-flags 'editor --'
